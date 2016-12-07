@@ -549,6 +549,9 @@ def path_from_walk(walk):
 @nogc
 def probX(Xs, a, td, irts=Irts({}), prior=0, origmat=None, changed=[]):
     numnodes=len(a)
+    identmat=np.identity(numnodes)          # pre-compute for tiny speed-up (only for non-IRT)
+    reg=(1+1e-10)                           # nuisance parameter to prevent errors; can also use pinv, but that's much slower
+    identmat=identmat * reg
 
     #np.random.seed(randomseed)             # bug in nx, random seed needs to be reset    
     probs=[]
@@ -564,6 +567,8 @@ def probX(Xs, a, td, irts=Irts({}), prior=0, origmat=None, changed=[]):
         statdist=stationary(t)
 
     for xnum, x in enumerate(Xs):
+        x2=np.array(x)  #JZ
+        t2=t[x2[:,None],x2] #JZ
         prob=[]
         if td.startX=="stationary":
             prob.append(statdist[x[0]])      # probability of X_1
@@ -573,13 +578,10 @@ def probX(Xs, a, td, irts=Irts({}), prior=0, origmat=None, changed=[]):
         # if impossible starting point, return immediately
         if prob[-1]==0.0:
             return -np.inf, (x[0])
-        
-        # optimize? pre-compute and pass to function
-        notinx=[i for i in range(numnodes) if i not in x]        # nodes not in trimmed X
 
         lenchanged=len(changed)
         if (lenchanged > 0) and isinstance(origmat,list):    # if updating prob. matrix based on specific link changes
-            update=0            # reset for each list
+            update=0                                         # reset for each list
 
         for curpos in range(1,len(x)):
             if (lenchanged > 0) and isinstance(origmat,list):
@@ -589,11 +591,7 @@ def probX(Xs, a, td, irts=Irts({}), prior=0, origmat=None, changed=[]):
                 if update==0:   # if not, take probability from old matrix
                     prob.append(origmat[xnum][curpos])
                     continue
-            startindex=x[curpos-1]
-            deletedlist=sorted(x[curpos:]+notinx,reverse=True)  # optimize? sort each list once and remove items
-            notdeleted=np.array([i for i in range(numnodes) if i not in deletedlist])
-           
-            Q=t[notdeleted[:, None],notdeleted]
+            Q=t2[:curpos,:curpos]
 
             if (len(irts.data) > 0) and (irts.irt_weight < 1): # use this method only when passing IRTs with weight < 1
                 startindex = startindex-sum([startindex > i for i in deletedlist])
@@ -631,21 +629,13 @@ def probX(Xs, a, td, irts=Irts({}), prior=0, origmat=None, changed=[]):
                 f=sum([math.e**i for i in flist])
                 prob.append(f)           # probability of x_(t-1) to X_t
             else:                        # if no IRTs, use standard INVITE
-                I=np.identity(len(Q))    # optimize? how?/c.inde
-                reg=(1+1e-10)            # nuisance parameter to prevent errors; can also use pinv, but that's much slower
-                N=inv(I*reg-Q)
-               
-                r=sorted(x[curpos:])
-                c=sorted(x[:curpos])
-                R=t[np.array(r)[:,None],c]
+                I=identmat[:len(Q),:len(Q)]
+                N=inv(I-Q)
+
+                R=t2[curpos:,:curpos]
 
                 B = np.dot(R,N)
-                startindex = c.index(x[curpos-1])
-                absorbingindex = r.index(x[curpos])
-                prob.append(B[absorbingindex,startindex])
-                if B[absorbingindex,startindex] < 0:
-                    print N
-                    raise
+                prob.append(B[0,-1])
 
             # if there's an impossible transition and no jumping, return immediately
             if (prob[-1]==0.0) and (td.jump == 0.0):
