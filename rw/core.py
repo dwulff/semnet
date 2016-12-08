@@ -53,17 +53,22 @@ def cost(graph,a):
 
 # graph=estimated graph, a=target/comparison graph
 # speed should be improved for large graphs if possible
-def costSDT(graph, a):          
-    Alinks=zip(*np.where(a==1))
-    Glinks=zip(*np.where(graph==1))
-    Anolinks=zip(*np.where(a==0))
-    Gnolinks=zip(*np.where(graph==0))
-    hit=sum([i in Alinks for i in Glinks])
-    fa=len(Glinks)-hit
-    cr=sum([i in Anolinks for i in Gnolinks])
-    miss=len(Gnolinks)-cr
-    cr=cr-len(a)            # don't count node self-transitions as correct rejections
-    return [hit/2, miss/2, fa/2, cr/2]
+def costSDT(graph, a):
+    hit=0; miss=0; fa=0; cr=0
+    check=(graph==a)
+    for rnum, r in enumerate(a):
+        for cnum, c in enumerate(r[:rnum]):
+            if check[rnum,cnum]==True:
+                if a[rnum,cnum]==1:
+                    hit += 1
+                else:
+                    cr += 1
+            else:
+                if a[rnum,cnum]==1:
+                    miss += 1
+                else:
+                    fa += 1
+    return [hit, miss, fa, cr]
 
 # calculate P(SW_graph|graph type) using pdf generated from genPrior
 def evalPrior(val, prior):
@@ -568,7 +573,7 @@ def probX(Xs, a, td, irts=Irts({}), prior=0, origmat=None, changed=[]):
     lenchanged=len(changed)
     for xnum, x in enumerate(Xs):
         x2=np.array(x)
-        t2=t[x2[:,None],x2]
+        t2=t[x2[:,None],x2]                  # re-arrange transition matrix to be in list order
         prob=[]
         if td.startX=="stationary":
             prob.append(statdist[x[0]])      # probability of X_1
@@ -825,7 +830,7 @@ def toyBatch(tg, td, outfile, irts=Irts({}), fitinfo=Fitinfo({}), start_seed=0,
 
         numedges=nx.number_of_edges(g)
         truegraph=nx.generate_sparse6(g,header=False)  # to write to file
-        # true graph LL
+        # true graph LL -- ugly code
         ll_tg=probX(Xs, a, td)[0]
         if use_prior: ll_tg_prior=probX(Xs, a, td, prior=prior)[0]
         else: ll_tg_prior=""
@@ -868,6 +873,7 @@ def toyBatch(tg, td, outfile, irts=Irts({}), fitinfo=Fitinfo({}), start_seed=0,
     
             # compute SDT
             hit, miss, fa, cr = costSDT(bestgraph,a)
+            print hit, miss, fa, cr
 
             # Record cost, time elapsed, LL of best graph, hash of best graph, and SDT measures
             data[method]['cost'].append(cost(bestgraph,a))
@@ -921,7 +927,7 @@ def walk_from_path(path):
 #              potentially a lot more computationally intensive, but could produce better fit
 def windowGraph(Xs, numnodes, w=2, f=2, c=0.05, valid=0, td=0):
     if valid and td==0:
-        raise('Need to pass Toydata when generating \'valid\' windowGraph()')
+        raise ValueError('Need to pass Toydata when generating \'valid\' windowGraph()')
 
     if c<1:
         from statsmodels.stats.proportion import proportion_confint as pci

@@ -1,9 +1,9 @@
-from core import *
+from .core import *
 
 import numpy as np
 
 try: import matplotlib.pyplot as plt
-except: print "Warning: Failed to import matplotlib"
+except: print("Warning: Failed to import matplotlib")
 
 # write graph to GraphViz file (.dot)
 def drawDot(g, filename, labels={}):
@@ -49,7 +49,7 @@ def checkAll(Xs, a, td):
     mat=np.zeros((len(a),len(a)))
     for i in range(len(a)):
         for j in range(len(a)):
-            print i, j
+            print(i, j)
             if j>=i:
                 a[i,j] = 1-a[i,j]
                 a[j,i] = 1-a[j,i]
@@ -69,14 +69,14 @@ def drawMatChange(Xs, a, td, link, cmap=plt.cm.bwr, keep=0, binary=0):
     mat1=probX(Xs, a, td, returnmat=1)
     removed=a[link[0],link[1]]
     if removed:
-        print "link removed"
+        print("link removed")
     else:
-        print "link added"
+        print("link added")
     a[link[0],link[1]] = 1-a[link[0],link[1]]
     a[link[1],link[0]] = 1-a[link[1],link[0]]
     mat2=probX(Xs, a, td, returnmat=1)
     if mat2 == -np.inf:
-        print "bad change"
+        print("bad change")
         a[link[0],link[1]] = 1-a[link[0],link[1]] # back to orig
         a[link[1],link[0]] = 1-a[link[1],link[0]]
         return
@@ -99,9 +99,9 @@ def drawMatChange(Xs, a, td, link, cmap=plt.cm.bwr, keep=0, binary=0):
     sum1=sum([sum(i) for i in mat1])
     sum2=sum([sum(i) for i in mat2])
     if sum2 > sum1:
-        print "BETTER!", sum2-sum1
+        print("BETTER!", sum2-sum1)
     else:
-        print "worse :(", sum2-sum1
+        print("worse :(", sum2-sum1)
     if (not keep) or ((keep) and (sum1 >= sum2)):
         a[link[0],link[1]] = 1-a[link[0],link[1]] # back to orig
         a[link[1],link[0]] = 1-a[link[1],link[0]]

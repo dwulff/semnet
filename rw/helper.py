@@ -9,11 +9,11 @@ class dotdict(dict):
         super(dotdict, self).__init__(*args, **kwargs)
         for arg in args:
             if isinstance(arg, dict):
-                for k, v in arg.iteritems():
+                for k, v in arg.items():
                     self[k] = v
 
         if kwargs:
-            for k, v in kwargs.iteritems():
+            for k, v in kwargs.items():
                 self[k] = v
 
     def __getattr__(self, attr):
@@ -89,7 +89,7 @@ def timer(fun):
         starttime=datetime.now()
         returnval = fun(*args, **kwargs)
         elapsedtime=str(datetime.now()-starttime)
-        print elapsedtime
+        print(elapsedtime)
         return returnval
     return timerwrapper
     
