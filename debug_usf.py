@@ -2,6 +2,9 @@ import rw
 import networkx as nx
 import numpy as np
 import pickle
+import sys
+
+filename=sys.argv[1]
 
 usf_graph, usf_items = rw.read_csv("./snet/USF_animal_subset.snet")
 usf_graph_nx = nx.from_numpy_matrix(usf_graph)
@@ -66,22 +69,30 @@ for simnum in range(numsims):
         seednum += numlists
 
     listnum=10
-    uinvite_graphs, priordict = rw.hierarchicalUinvite(datab[:listnum], items[:listnum], numnodes[:listnum], toydata, fitinfo=fitinfo)
-    uinvite_group_graph = rw.priorToGraph(priordict, usf_items)
 
-    alldata=dict()
-    alldata['uinvite_graphs'] = uinvite_graphs
-    alldata['priordict'] = priordict
-    alldata['uinvite_group_graph'] = uinvite_group_graph
-    alldata['datab'] = datab
-    alldata['items'] = items
-    alldata['numnodes'] = numnodes
-    #alldata['td'] = toydata
-    #alldata['fitinfo'] = fitinfo
+    
+    for b_start in [1,, 2, 3, 0.75, 0.5]:
+        for a_start in [1, 2, 3, 0.75, 0.5]:
+            for zib_p in [.4, .6, .3, .7]:
+                fitinfo.prior_method = "zeroinflatedbetabinomial"
+                fitinfo.zib_p = zib_p
+                fitinfo.prior_a = a_start
+                fitinfo.prior_b = b_start
+                uinvite_graphs, priordict = rw.hierarchicalUinvite(datab[:listnum], items[:listnum], numnodes[:listnum], toydata, fitinfo=fitinfo)
+                uinvite_group_graph = rw.priorToGraph(priordict, usf_items)
 
-    fh=open("densitymodel.pickle","w")
-    pickle.dump(alldata,fh)
-    fh.close()
+                alldata=dict()
+                alldata['uinvite_graphs'] = uinvite_graphs
+                alldata['priordict'] = priordict
+                alldata['uinvite_group_graph'] = uinvite_group_graph
+                alldata['datab'] = datab
+                alldata['items'] = items
+                alldata['numnodes'] = numnodes
+                
+                filename = "zibb_p" + str(int(p*10)) + "_a" + str(a_start).replace('.','') + "_b" + str(b_start).replace('.','') + ".pickle"
+                fh=open(filename,"w")
+                pickle.dump(alldata,fh)
+                fh.close()
     
     costlist = [rw.costSDT(uinvite_group_graph, usf_graph), rw.cost(uinvite_group_graph, usf_graph)]
     costlist = rw.flatten_list(costlist)
